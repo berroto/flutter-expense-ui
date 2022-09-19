@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_expense_ui/models/transaction.dart';
+import 'package:flutter_expense_ui/widgets/chart.dart';
 import 'package:flutter_expense_ui/widgets/new_transaction.dart';
 import 'package:flutter_expense_ui/widgets/transaction_list.dart';
 import 'package:intl/intl.dart';
@@ -16,10 +17,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Personal Expenses',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+          fontFamily: "Roboto",
+          colorScheme: ColorScheme.fromSwatch(
+            primarySwatch: Colors.purple,
+          ).copyWith(secondary: Colors.amber),
+          buttonColor: Colors.white),
       home: MyHomePage(),
     );
   }
@@ -37,23 +41,36 @@ class _MyHomePageState extends State<MyHomePage> {
       id: "t1",
       title: "New Shoes",
       amount: 69.20,
-      date: DateTime.now(),
+      date: DateTime.now().subtract(Duration(days: 4)),
     ),
     Transaction(
         id: "t2",
         title: "Weekly Groceries",
         amount: 45.10,
-        date: DateTime.now())
+        date: DateTime.now().subtract(Duration(days: 2)))
   ];
 
-  void _addNewTransaction(String title, double amount) {
+  List<Transaction> get _recentTransaction {
+    return _userTransaction
+        .where(
+            (tx) => tx.date.isAfter(DateTime.now().subtract(Duration(days: 7))))
+        .toList();
+  }
+
+  void _addNewTransaction(String title, double amount, DateTime date) {
     final newTx = Transaction(
         id: DateTime.now().toString(),
         title: title,
         amount: amount,
-        date: DateTime.now());
+        date: date);
     setState(() {
       _userTransaction.add(newTx);
+    });
+  }
+
+  void _deleteTransaction(String id) {
+    setState(() {
+      _userTransaction.removeWhere((element) => element.id == id);
     });
   }
 
@@ -63,7 +80,7 @@ class _MyHomePageState extends State<MyHomePage> {
         builder: (_) {
           return GestureDetector(
               onTap: () {},
-              child: NewTransaction(addNewTransaction: _addNewTransaction),
+              child: NewTransaction(addTx: _addNewTransaction),
               behavior: HitTestBehavior.opaque);
         });
   }
@@ -97,16 +114,10 @@ class _MyHomePageState extends State<MyHomePage> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Container(
-                width: double.infinity,
-                child: Card(
-                  child: Text("Chart"),
-                  color: Colors.blue,
-                  elevation: 5,
-                ),
-              ),
+              Chart(_recentTransaction),
               TransactionList(
                 userTransaction: _userTransaction,
+                deleteTx: _deleteTransaction,
               )
             ]),
       ),
