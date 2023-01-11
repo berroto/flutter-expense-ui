@@ -1,10 +1,11 @@
-import 'package:flutter/gestures.dart';
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_expense_ui/models/transaction.dart';
 import 'package:flutter_expense_ui/widgets/chart.dart';
 import 'package:flutter_expense_ui/widgets/new_transaction.dart';
 import 'package:flutter_expense_ui/widgets/transaction_list.dart';
-import 'package:intl/intl.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,16 +17,34 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Personal Expenses',
-      theme: ThemeData(
-          fontFamily: "Roboto",
-          colorScheme: ColorScheme.fromSwatch(
-            primarySwatch: Colors.purple,
-          ).copyWith(secondary: Colors.amber),
-          buttonColor: Colors.white),
-      home: MyHomePage(),
-    );
+    if (Platform.isIOS) {
+      return CupertinoApp(
+        title: 'Personal Expenses',
+        theme: CupertinoThemeData(
+            textTheme: CupertinoTextThemeData(
+                textStyle: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    backgroundColor: CupertinoColors.black)),
+            brightness: Brightness.light,
+            primaryColor: CupertinoColors.systemPurple,
+            barBackgroundColor: CupertinoColors.black,
+            primaryContrastingColor: CupertinoColors.systemYellow,
+            scaffoldBackgroundColor: CupertinoColors.black),
+        home: MyHomePage(),
+      );
+    } else {
+        return MaterialApp(
+          title: 'Personal Expenses',
+          theme: ThemeData(
+              fontFamily: "Roboto",
+              colorScheme: ColorScheme.fromSwatch(
+                primarySwatch: Colors.purple,
+              ).copyWith(secondary: Colors.amber),
+              buttonColor: Colors.white),
+          home: MyHomePage(),
+        );
+    }
   }
 }
 
@@ -57,6 +76,8 @@ class _MyHomePageState extends State<MyHomePage> {
         .toList();
   }
 
+  bool _ShowChart = false;
+
   void _addNewTransaction(String title, double amount, DateTime date) {
     final newTx = Transaction(
         id: DateTime.now().toString(),
@@ -87,14 +108,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
+    var mediaQueryData = MediaQuery.of(context);
+    final isLandscape = mediaQueryData.orientation == Orientation.landscape;
+
+    AppBar appBar = AppBar(
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text("Flutter App"),
@@ -108,24 +125,73 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           )
         ],
+      );
+
+
+    final txList = Container(
+      height: (mediaQueryData.size.height -
+              appBar.preferredSize.height -
+              mediaQueryData.padding.top) *
+          0.7,
+      child: TransactionList(
+        userTransaction: _userTransaction,
+        deleteTx: _deleteTransaction,
       ),
-      body: SingleChildScrollView(
+    );
+
+    final pageBody = SafeArea(
+      child: SingleChildScrollView(
         child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Chart(_recentTransaction),
-              TransactionList(
-                userTransaction: _userTransaction,
-                deleteTx: _deleteTransaction,
-              )
+              if (isLandscape)
+                Row(
+                  children: [
+                    Text("Show Chart"),
+                    Switch.adaptive(
+                        activeColor: Theme.of(context).accentColor,
+                        value: _ShowChart,
+                        onChanged: (val) {
+                          setState(() {
+                            _ShowChart = val;
+                          });
+                        })
+                  ],
+                ),
+              if (!isLandscape)
+                Container(
+                    height: (mediaQueryData.size.height -
+                            appBar.preferredSize.height -
+                            mediaQueryData.padding.top) *
+                        0.7,
+                    child: Chart(_recentTransaction)),
+              if (!isLandscape) txList,
+              if (isLandscape)
+                _ShowChart
+                    ? Container(
+                        height: (mediaQueryData.size.height -
+                                appBar.preferredSize.height -
+                                mediaQueryData.padding.top) *
+                            0.7,
+                        child: Chart(_recentTransaction))
+                    : txList
             ]),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _startAddNewTransaction(context),
-        child: Icon(Icons.add),
-      ),
     );
+
+    return Scaffold(
+            appBar: appBar,
+            body: pageBody,
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
+            floatingActionButton: Platform.isIOS
+                ? Container()
+                : FloatingActionButton(
+                    onPressed: () => _startAddNewTransaction(context),
+                    child: Icon(Icons.add),
+                  )
+    );
+
   }
 }
